@@ -1,0 +1,25 @@
+/*
+.sidebar { padding: 10px 0 0; }
+.well ul { padding: 0; }
+*/
+body {}
+/*
+code {border: none; background-color:inherit; color: #bb8844;}
+pre {color: #222; font-size: 14px;}
+*/
+
+.quiet {font-size: 12px;}
+
+/* Entries */
+div.post-info {
+  font-size: 75%;
+  margin-bottom: 16px;
+  margin-top: -24px;
+  text-align: right;
+}
+
+/* Comments */
+h2#comments {margin-top: 36px;}
+textarea#comment {height: 150px;}
+
+li.entry-list-item {margin-bottom: 70px;}

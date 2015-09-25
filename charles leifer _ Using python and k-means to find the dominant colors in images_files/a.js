@@ -1,0 +1,1 @@
+(function(id){ var d=document,i=new Image(1, 1),e=encodeURIComponent; i.src='http://a.charlesleifer.com/a.gif?id='+id+'&url='+e(d.location.href)+'&ref='+e(d.referrer)+'&t='+e(d.title); })(1)

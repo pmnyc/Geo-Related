@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>charles leifer | Using python and k-means to find the dominant colors in images</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/blog.css">
+    <link rel="stylesheet" type="text/css" href="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/style.css">
+    <link rel="stylesheet" type="text/css" href="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/hilite.css">
+    <link rel="shortcut icon" href="http://charlesleifer.com/favicon.ico">
+    <link rel="alternate" href="http://charlesleifer.com/blog/rss/" title="Atom feed" type="application/atom+xml">
+    
+    <script src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/analytics.js" async=""></script><script src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/jquery-1.js" type="text/javascript"></script>
+    <script src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/bootstrap.js"></script>
+    
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    
+      
+      <script type="text/javascript">
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-6418405-1', 'auto');
+        ga('send', 'pageview');
+      </script>
+      
+    
+  </head>
+
+  <body class="">
+    <div class="navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="http://charlesleifer.com/">&gt;&gt;&gt; charlesleifer.com</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="http://charlesleifer.com/blog/">/blog</a></li>
+            <li><a href="https://github.com/coleifer/">/code</a></li>
+            <li><a href="http://charlesleifer.com/contact/">/contact</a></li>
+            <li><a href="http://media.charlesleifer.com/blog/documents/resume.pdf">/resume</a></li>
+          </ul>
+          <form action="/blog/search/" class="navbar-form navbar-right" method="get" role="search">
+            <div class="form-group">
+              <input autocomplete="off" class="form-control input-xs" name="q" placeholder="Search" style="width: 140px;" type="text">
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="container content">
+      <div class="page-header">
+        
+        <h1>Using python and k-means to find the dominant colors in images</h1>
+        
+      </div>
+
+      
+
+      
+  <div class="post-info">
+    
+    
+      October 23, 2012 17:23
+      <span class="separator">/</span>
+      <a href="#comments">17 comments</a>
+      <span class="separator">/</span>
+      
+        <a href="http://charlesleifer.com/blog/tags/algorithms/">algorithms</a>
+      
+        <a href="http://charlesleifer.com/blog/tags/python/">python</a>
+      
+    
+  </div>
+  
+  
+    <p>I'm working on a little photography website for my Dad and thought it would be
+neat to extract color information from photographs.  I tried a couple of different
+approaches before finding one that works pretty well.  This approach uses
+<a href="http://en.wikipedia.org/wiki/K-means_clustering">k-means clustering</a> to cluster
+the pixels in groups based on their color.  The center of those resulting clusters
+are then the "dominant" colors.  k-means is a great fit for this problem because
+it is (usually) fast.  It has the caveat of requiring you to specify up-front how
+many clusters you want -- I found that it works well when I specified around 3.</p>
+<h3>A warning</h3>
+<p>I'm no expert on data-mining -- almost all my experience comes from reading
+Toby Segaran's excellent book <a href="http://shop.oreilly.com/product/9780596529321.do">Programming Collective Intelligence</a>.
+In one of the first chapters Toby covers clustering algorithms, including a nice
+treatment of k-means, so if you want to really learn from an expert I'd suggest
+picking up a copy.  You won't be disappointed.</p>
+<h3>How it works</h3>
+<p>The way I understand it to work is you start with a bunch of data points.  For
+simplicity let's say they're numbers on a number-line.  You want to group the
+numbers into "k" clusters, so pick "k" points randomly from the data to use
+as your "clusters".</p>
+<p>Now loop over every point in the data and calculate its distance to each of
+the "k" clusters.  Find the nearest cluster and associate that point with
+the cluster.  When you've looped over all the points they should all be assigned
+to one of the "k" clusters.  Now, for each cluster recalculate its center by averaging
+the distances of all the associated points and start over.</p>
+<p>When the centers stop moving very much you can stop looping.  You 
+will end up
+with something like this -- the points are colored based on what 
+"cluster" they are in and the dark-black circles indicate the centers of
+ each cluster.</p>
+<p><a href="http://media.charlesleifer.com/blog/photos/k-means_result.gif" title="K-Means"><img alt="K-Means" class="img-responsive" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/k-means_result_800x800.gif"></a></p>
+<h3>Applying it to photographs</h3>
+<p>The neat thing about this algorithm is, since it relies only on a simple
+distance calculation, you can extend it out to multi-dimensional data.  Color
+is often represented using 3 channels, Red, Green, and Blue.  So what I did
+was treat all the pixels in the image like points on a 3-dimensional space.
+That's all there was to it!</p>
+<p>I made a few optimizations along the way:</p>
+<ol>
+<li>resize the image down to 200x200 or so using <a href="http://www.pythonware.com/products/pil/">PIL</a></li>
+<li>instead of storing "duplicate" points, store a count with each -- saves on calculations</li>
+</ol>
+<h3>Looking at some results</h3>
+<p><a href="http://media.charlesleifer.com/blog/photos/akira.jpg" title="Akira motorcycles"><img alt="Akira motorcycles" class="img-responsive" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/akira_800x800.jpg"></a></p>
+<p>The results:
+<span style="background-color: #be542a">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #55616e">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #191018">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+<p><a href="http://media.charlesleifer.com/blog/photos/akira-cycle-2.png" title="Akira motorcycles 2"><img alt="Akira motorcycles 2" class="img-responsive" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/akira-cycle-2_800x800.png"></a></p>
+<p>The results:
+<span style="background-color: #94bdb4">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #2b4b68">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #0a1a2c">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+<p><a href="http://media.charlesleifer.com/blog/photos/akira-neo-tokyo-6.png" title="Akira 3"><img alt="Akira 3" class="img-responsive" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/akira-neo-tokyo-6_800x800.png"></a></p>
+<p>The results:
+<span style="background-color: #210f14">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #95635b">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #593435">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+<p><a href="http://media.charlesleifer.com/blog/photos/akira-neo-tokyo-7.png" title="Akira 4"><img alt="Akira 4" class="img-responsive" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/akira-neo-tokyo-7_800x800.png"></a></p>
+<p>The results:
+<span style="background-color: #75807d">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #0c151b">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span style="background-color: #334853">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+<h3>The source code</h3>
+<p>Below is the source code.  It requires PIL to resize the image down to 200x200
+and to extract the colors/counts.  The "colorz" function is the one that returns
+the actual color codes for a filename.</p>
+<div class="highlight"><pre><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">Image</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="n">Point</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s">'Point'</span><span class="p">,</span> <span class="p">(</span><span class="s">'coords'</span><span class="p">,</span> <span class="s">'n'</span><span class="p">,</span> <span class="s">'ct'</span><span class="p">))</span>
+<span class="n">Cluster</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s">'Cluster'</span><span class="p">,</span> <span class="p">(</span><span class="s">'points'</span><span class="p">,</span> <span class="s">'center'</span><span class="p">,</span> <span class="s">'n'</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">get_points</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">size</span>
+    <span class="k">for</span> <span class="n">count</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">img</span><span class="o">.</span><span class="n">getcolors</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">h</span><span class="p">):</span>
+        <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Point</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">count</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">points</span>
+
+<span class="n">rtoh</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">rgb</span><span class="p">:</span> <span class="s">'#</span><span class="si">%s</span><span class="s">'</span> <span class="o">%</span> <span class="s">''</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="s">'</span><span class="si">%02x</span><span class="s">'</span> <span class="o">%</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">rgb</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">colorz</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">img</span><span class="o">.</span><span class="n">thumbnail</span><span class="p">((</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">))</span>
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="n">points</span> <span class="o">=</span> <span class="n">get_points</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">clusters</span> <span class="o">=</span> <span class="n">kmeans</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">rgbs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">center</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">map</span><span class="p">(</span><span class="n">rtoh</span><span class="p">,</span> <span class="n">rgbs</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">euclidean</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+    <span class="p">]))</span>
+
+<span class="k">def</span> <span class="nf">calculate_center</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+    <span class="n">plen</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+        <span class="n">plen</span> <span class="o">+=</span> <span class="n">p</span><span class="o">.</span><span class="n">ct</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">vals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">ct</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Point</span><span class="p">([(</span><span class="n">v</span> <span class="o">/</span> <span class="n">plen</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">],</span> <span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">kmeans</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">min_diff</span><span class="p">):</span>
+    <span class="n">clusters</span> <span class="o">=</span> <span class="p">[</span><span class="n">Cluster</span><span class="p">([</span><span class="n">p</span><span class="p">],</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+
+    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">plists</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span>
+
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+            <span class="n">smallest_distance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s">'Inf'</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="n">euclidean</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">clusters</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">center</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="n">smallest_distance</span><span class="p">:</span>
+                    <span class="n">smallest_distance</span> <span class="o">=</span> <span class="n">distance</span>
+                    <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">plists</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+        <span class="n">diff</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+            <span class="n">old</span> <span class="o">=</span> <span class="n">clusters</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">center</span> <span class="o">=</span> <span class="n">calculate_center</span><span class="p">(</span><span class="n">plists</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">old</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">new</span> <span class="o">=</span> <span class="n">Cluster</span><span class="p">(</span><span class="n">plists</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">center</span><span class="p">,</span> <span class="n">old</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">clusters</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">euclidean</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">center</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">diff</span> <span class="o">&lt;</span> <span class="n">min_diff</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="k">return</span> <span class="n">clusters</span>
+</pre></div>
+<h2>Playing with it in the browser</h2>
+<p>I ported the code over to JavaScript -- let me tell you, its pretty 
+rough, but it works and is fast.  If you'd like to take a look at a live
+ example, check out:</p>
+<p><a href="http://charlesleifer.com/static/colors/">http://charlesleifer.com/static/colors/</a> -- you can view the source to see the js version, but basically it is just using the HTML5 canvas and its <code>getImageData</code> method.</p>
+<h2>Thanks for reading</h2>
+<p>Thanks for reading, I hope you found this post interesting.  I am sure this is
+not the only approach so if you have other ideas please feel free to <a href="#comments">leave a comment</a>
+or <a href="http://charlesleifer.com/contact/">contact me</a> directly.</p>
+<h2>Links</h2>
+<ul>
+<li>A commenter on reddit posted this gist, showing how he used the 
+script to generate console color themes and more using the methods 
+outlined in this post: <a href="https://gist.github.com/3946121">https://gist.github.com/3946121</a></li>
+<li>Another commenter on reddit posted a link to scipy, which has built-in support for kmeans: <a href="http://docs.scipy.org/doc/scipy/reference/cluster.vq.html">http://docs.scipy.org/doc/scipy/reference/cluster.vq.html</a></li>
+</ul>
+  
+  
+    
+    
+      <h3>More like this</h3>
+      <ul>
+        
+          <li><a href="http://charlesleifer.com/blog/using-sqlite-full-text-search-with-python/">Using SQLite Full-Text Search with Python</a></li>
+        
+          <li><a href="http://charlesleifer.com/blog/meet-scout-a-search-server-powered-by-sqlite/">Meet Scout, a Search Server Powered by SQLite</a></li>
+        
+      </ul>
+    
+  
+  <h2 id="comments">Comments (17)</h2>
+
+  
+  <div class="media" id="c487">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_010.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Stephen</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c487">oct 24 2012, at 12:21am</a></small>
+      </h4>
+      <p>Neat. I can see using something like this to power those ambient color lights behind some TVs.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c488">
+    <a class="pull-left" href="http://krazydad.com/">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_012.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="http://krazydad.com/">Jim Bumgardner</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c488">oct 24 2012, at 03:24pm</a></small>
+      </h4>
+      <p>I've been using this method for a few years. A neat extension 
+to it enables you to determine a "foreground" and "background color.  
+The cluster with the most pixels near the center of the image is 
+"foreground".  The cluster with the most pixels near the edges is 
+"background".</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c489">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_008.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Ryan O'Hern</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c489">oct 24 2012, at 03:54pm</a></small>
+      </h4>
+      <p>An interesting extension to this would be to weight more highly
+ data points for colors that are "eye grabbing". For example, in the 
+motorbike picture, you have captured the most common three shades in the
+ image, but the blue lights dominate the viewer's perception (at least 
+for me). If I were choosing dominant colors to do a styling template for
+ something like...Warhammer pieces (this is the only thing that comes to
+ mind, strangely) not choosing that bright blue color would be strange, 
+nay? At least as an accent. Perhaps you could capture a fourth data 
+point exclusive to this feature to give exactly that: accent color.</p>
+<p>You may know that k-means can mess up and give non-optimal clustering
+ due to local optimums. You might want to add an additional step to run 
+k-means N times and then choose the trial with the min cost value 
+averaged over all data points (where cost is distance to the matched 
+centroid) as your result.</p>
+<p>Cool post and simple implementation. I like.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c490">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar.png">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">David</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c490">oct 24 2012, at 03:54pm</a></small>
+      </h4>
+      <p>Would be really nice to see in a gallery. With each image the page adapts the colors around it =)</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c491">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_003.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Adam</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c491">oct 24 2012, at 04:44pm</a></small>
+      </h4>
+      <p>Consider while True: instead of while 1:.  More readable, and doesn't incur a type conversion every iteration.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c492">
+    <a class="pull-left" href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/mathewsanders.com">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_014.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/mathewsanders.com">Mathew Sanders</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c492">oct 24 2012, at 04:47pm</a></small>
+      </h4>
+      <p>@Ryan I wonder if using HSL instead of RGB as the colour model 
+and somehow shifting the center of the cluster to have more weight on 
+the saturation axis (we tend to perceive saturated colours to 'pop' out 
+more).</p>
+<p>@Charles this is a great project! I've often asked developers if we 
+could do something like this to automatically tag images but I've always
+ been told that it's too expensive :( super impressed with your 
+javascript implementation!</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c493">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Samantha K</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c493">oct 24 2012, at 07:52pm</a></small>
+      </h4>
+      <p>Can this algorithm be speed up? It runs over 10 seconds on my 
+computer for each image. I've several hundred thousand of images to 
+process. I could wait 1 second per image but 10 is a bit too much.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c494">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_006.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Phillip  Cloud</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c494">oct 24 2012, at 08:13pm</a></small>
+      </h4>
+      <p>You should try scikits-learn. They have a nicely encapsulated kmeans algorithm. It's very fast.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c495">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_015.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Marjan</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c495">oct 24 2012, at 08:20pm</a></small>
+      </h4>
+      <p>This was the coolest thing i have ever seen in making a real use of clustering algorithms. Well done</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c496">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_011.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Hugh Brown</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c496">oct 24 2012, at 08:57pm</a></small>
+      </h4>
+      <p>def points(img):
+    w, h = img.size
+    return [Point(color, 3, count) for count, color in img.getcolors(w * h)]</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c497">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_002.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">ai_ja_nai</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c497">oct 25 2012, at 03:36am</a></small>
+      </h4>
+      <p>Nice application.
+But, due to the resize to 200x200 to reduce search space, don't you end 
+to smooth the dataset too much, resulting in a lot of approximations in 
+pixel counts?</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c498">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_013.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Matt W</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c498">oct 25 2012, at 04:19am</a></small>
+      </h4>
+      <p>We were using similar techniques in the 1990s on analytical 
+microscope data to try to unravel the information held in multivariate 
+signals.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c499">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_007.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Cushen</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c499">oct 25 2012, at 06:04am</a></small>
+      </h4>
+      <p>This is a similar application and might be of interest:</p>
+<p>http://mkweb.bcgsc.ca/color_summarizer/</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c502">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_002.png">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Mark Ransom</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c502">oct 25 2012, at 10:27pm</a></small>
+      </h4>
+      <p>@Samantha, one easy way to speed it up would be to remove the 
+sqrt() function from the euclidean distance calculation. When comparing 
+distances it doesn't matter if you compare the actual distance or the 
+square of the distance.</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c504">
+    <a class="pull-left" href="http://www.pytania.biz/">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_005.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="http://www.pytania.biz/">pit</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c504">oct 26 2012, at 04:19am</a></small>
+      </h4>
+      <p>Is there online version of this or similar script?</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c509">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_009.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Tim Wilder</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c509">oct 28 2012, at 02:05pm</a></small>
+      </h4>
+      <p>Great entry. It was succinct, informative, and pretty interesting. Thank you for posting!</p>
+    </div>
+  </div>
+  
+
+  
+  <div class="media" id="c511">
+    <a class="pull-left" href="">
+      <img class="media-object" src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/avatar_004.jpg">
+    </a>
+    <div class="media-body">
+      <h4 class="media-heading">
+        <a href="">Shashank</a> <span class="separator">|</span>
+        <small><a href="http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/#c511">oct 29 2012, at 04:33am</a></small>
+      </h4>
+      <p>Nice post.
+I guess this is the same method used in Windows7 to shade the taskbar icons on mouse hover.</p>
+    </div>
+  </div>
+  
+
+
+<hr>
+
+  <p>Commenting has been closed, but please feel free to <a href="http://charlesleifer.com/contact/">contact me</a></p>
+
+
+
+      <hr>
+      <footer>
+        <p>
+          <a class="pull-right" href="http://charlesleifer.com/about/"><small>About this site</small></a>
+          © charles leifer, 2015
+          
+        </p>
+      </footer>
+    </div>
+    
+    
+      <script src="charles%20leifer%20_%20Using%20python%20and%20k-means%20to%20find%20the%20dominant%20colors%20in%20images_files/a.js" type="text/javascript"></script>
+    
+    
+    
+  
+</body></html>
